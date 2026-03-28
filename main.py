@@ -39,7 +39,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates")
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 # ── Track / update a product price ──────────────────────────────────────────
