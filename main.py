@@ -1,6 +1,7 @@
 import os
-import logging
+os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "/opt/render/project/src/browsers"
 
+import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
