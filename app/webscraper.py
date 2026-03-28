@@ -2,11 +2,13 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 import logging
 
 
 def Webscraper(url):
-    options = webdriver.ChromeOptions()  # type: ignore
+    options = webdriver.ChromeOptions()   #type: ignore
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
@@ -18,26 +20,23 @@ def Webscraper(url):
         "Chrome/120.0.0.0 Safari/537.36"
     )
 
-    driver = webdriver.Chrome(options=options)  # type: ignore
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options) #type: ignore
+
     try:
         driver.get(url)
-
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located(
                 (By.CLASS_NAME, "pdp-mod-product-badge-title")
             )
         )
-
-        name = driver.find_element(
-            By.CLASS_NAME, "pdp-mod-product-badge-title"
-        ).text
+        name = driver.find_element(By.CLASS_NAME, "pdp-mod-product-badge-title").text
         price = (
             driver.find_element(By.CLASS_NAME, "pdp-price")
             .text.replace("৳", "")
             .replace(",", "")
             .strip()
         )
-
         logging.info(f"Scraped — Name: {name} | Price: {price}")
         return [name, price]
 

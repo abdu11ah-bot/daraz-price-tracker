@@ -6,3 +6,4 @@ selenium
 jinja2
 pydantic
 python-multipart
+webdriver-manager
