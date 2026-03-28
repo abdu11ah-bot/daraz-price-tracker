@@ -1,48 +1,33 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from playwright.sync_api import sync_playwright
 import logging
 
 
 def Webscraper(url):
-    options = webdriver.ChromeOptions()   #type: ignore
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    options.add_argument(
-        "--user-agent=Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page(user_agent=(
+            "Mozilla/5.0 (X11; Linux x86_64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ))
+        try:
+            page.goto(url, timeout=20000)
+            page.wait_for_selector(".pdp-mod-product-badge-title", timeout=15000)
 
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options) #type: ignore
-
-    try:
-        driver.get(url)
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located(
-                (By.CLASS_NAME, "pdp-mod-product-badge-title")
+            name = page.locator(".pdp-mod-product-badge-title").first.inner_text()
+            price = (
+                page.locator(".pdp-price").first.inner_text()
+                .replace("৳", "")
+                .replace(",", "")
+                .strip()
             )
-        )
-        name = driver.find_element(By.CLASS_NAME, "pdp-mod-product-badge-title").text
-        price = (
-            driver.find_element(By.CLASS_NAME, "pdp-price")
-            .text.replace("৳", "")
-            .replace(",", "")
-            .strip()
-        )
-        logging.info(f"Scraped — Name: {name} | Price: {price}")
-        return [name, price]
 
-    except Exception as e:
-        logging.error(f"Webscraper error for {url}: {e}")
-        return None
+            logging.info(f"Scraped — Name: {name} | Price: {price}")
+            return [name, price]
 
-    finally:
-        driver.quit()
+        except Exception as e:
+            logging.error(f"Webscraper error for {url}: {e}")
+            return None
+
+        finally:
+            browser.close()

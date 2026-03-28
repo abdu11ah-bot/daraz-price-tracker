@@ -2,9 +2,8 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 psycopg2-binary
-selenium
+playwright
 jinja2
 pydantic
 python-multipart
-webdriver-manager
 starlette==0.41.3
