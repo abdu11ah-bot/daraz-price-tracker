@@ -1,0 +1,707 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PriceWatch — Lazada Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --surface: #111114;
+    --surface2: #18181d;
+    --border: #252530;
+    --accent: #e8f542;
+    --accent2: #42f5b3;
+    --red: #f54242;
+    --text: #e8e8f0;
+    --muted: #5c5c72;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,12,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(232,245,66,0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(232,245,66,0); }
+  }
+
+  .header-status {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Main layout ─────────────────────────────────────────────────── */
+  main {
+    padding: 36px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  /* ── Stats row ─────────────────────────────────────────────────── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+  .stat-card:nth-child(1) { animation-delay: 0.05s; }
+  .stat-card:nth-child(2) { animation-delay: 0.10s; }
+  .stat-card:nth-child(3) { animation-delay: 0.15s; }
+  .stat-card:nth-child(4) { animation-delay: 0.20s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .stat-card:hover::after { opacity: 1; }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .stat-value {
+    font-weight: 800;
+    font-size: 2rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.green  { color: var(--accent2); }
+  .stat-value.red    { color: var(--red); }
+
+  /* ── Track form ─────────────────────────────────────────────────── */
+  .track-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px 32px;
+    animation: fadeUp 0.5s 0.25s ease both;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .track-form {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .url-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    padding: 14px 18px;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 0;
+  }
+  .url-input::placeholder { color: var(--muted); }
+  .url-input:focus { border-color: var(--accent); }
+
+  .btn {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.05em;
+    padding: 14px 28px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0a0c;
+  }
+  .btn-primary:hover { background: #d4de2e; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+  }
+  .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid transparent;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+  .btn-danger:hover { border-color: var(--red); background: rgba(245,66,66,0.08); }
+
+  /* ── Products table ─────────────────────────────────────────────── */
+  .products-section {
+    animation: fadeUp 0.5s 0.3s ease both;
+  }
+
+  .products-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .table-wrap {
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  thead {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    padding: 14px 18px;
+    text-align: left;
+    font-weight: 400;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+
+  td {
+    padding: 16px 18px;
+    vertical-align: middle;
+  }
+
+  .product-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .product-url {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 3px;
+  }
+
+  .price-mono {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    font-weight: 700;
+  }
+  .price-new { color: var(--text); }
+  .price-old { color: var(--muted); font-size: 0.75rem; font-weight: 400; display: block; margin-top: 2px; }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .badge-new       { background: rgba(66,245,179,0.12); color: var(--accent2); }
+  .badge-increased { background: rgba(245,66,66,0.12);  color: var(--red); }
+  .badge-decreased { background: rgba(232,245,66,0.12); color: var(--accent); }
+  .badge-no_change { background: rgba(92,92,114,0.15);  color: var(--muted); }
+
+  .diff-positive { color: var(--red); font-family: var(--mono); font-size: 0.8rem; }
+  .diff-negative { color: var(--accent); font-family: var(--mono); font-size: 0.8rem; }
+  .diff-zero     { color: var(--muted); font-family: var(--mono); font-size: 0.8rem; }
+
+  .actions-cell { display: flex; gap: 6px; align-items: center; }
+
+  /* ── Empty / loading states ─────────────────────────────────────── */
+  .empty-state {
+    padding: 64px 32px;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  .empty-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .empty-sub {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  /* Skeleton loader */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .sk-row td { padding: 20px 18px; }
+
+  /* ── Toast notification ─────────────────────────────────────────── */
+  #toast-container {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .toast {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 14px 20px;
+    border-left: 3px solid var(--accent);
+    background: var(--surface2);
+    color: var(--text);
+    max-width: 340px;
+    animation: toastIn 0.3s ease;
+    pointer-events: auto;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .toast.error { border-left-color: var(--red); }
+  .toast.success { border-left-color: var(--accent2); }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── Spinner ─────────────────────────────────────────────────────── */
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(10,10,12,0.3);
+    border-top-color: #0a0a0c;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Refresh btn ─────────────────────────────────────────────────── */
+  .refresh-icon {
+    display: inline-block;
+    transition: transform 0.3s;
+  }
+  .refreshing .refresh-icon { animation: spin 0.7s linear infinite; }
+
+  /* ── Responsive ─────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    main { padding: 20px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    header { padding: 16px 20px; }
+    .track-form { flex-direction: column; }
+    table { font-size: 0.78rem; }
+    th, td { padding: 12px 12px; }
+  }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 1.5rem; }
+    .hide-mobile { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    PriceWatch
+  </div>
+  <span class="header-status" id="last-update">Idle</span>
+</header>
+
+<main>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Products</div>
+      <div class="stat-value accent" id="stat-total">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Price Drops</div>
+      <div class="stat-value green" id="stat-drops">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Price Rises</div>
+      <div class="stat-value red" id="stat-rises">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Unchanged</div>
+      <div class="stat-value" id="stat-same" style="color:var(--muted)">—</div>
+    </div>
+  </div>
+
+  <!-- Track new URL -->
+  <div class="track-section">
+    <div class="section-label">// Track a new product</div>
+    <div class="track-form">
+      <input
+        class="url-input"
+        id="url-input"
+        type="text"
+        placeholder="https://www.lazada.com.bd/products/..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn btn-primary" id="track-btn" onclick="trackProduct()">
+        <span id="track-btn-inner">+ Track</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Products -->
+  <div class="products-section">
+    <div class="products-header">
+      <div class="section-label" style="margin-bottom:0">// Tracked products</div>
+      <button class="btn btn-ghost" id="refresh-btn" onclick="loadProducts()">
+        <span class="refresh-icon" id="refresh-icon">↻</span> Refresh
+      </button>
+    </div>
+    <div id="products-container"></div>
+  </div>
+
+</main>
+
+<div id="toast-container"></div>
+
+<script>
+const API = '';
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+/* ── Stats ───────────────────────────────────────────────────────── */
+function updateStats(products) {
+  document.getElementById('stat-total').textContent = products.length;
+  document.getElementById('stat-drops').textContent = products.filter(p => p.status === 'decreased').length;
+  document.getElementById('stat-rises').textContent = products.filter(p => p.status === 'increased').length;
+  document.getElementById('stat-same').textContent  = products.filter(p => p.status === 'no_change').length;
+}
+
+/* ── Render table ───────────────────────────────────────────────── */
+function badgeHtml(status) {
+  const icons = { new: '★', increased: '▲', decreased: '▼', no_change: '—' };
+  const labels = { new: 'New', increased: 'Rose', decreased: 'Dropped', no_change: 'Stable' };
+  return `<span class="badge badge-${status}">${icons[status]} ${labels[status]}</span>`;
+}
+
+function diffHtml(diff, pct) {
+  if (diff === 0) return `<span class="diff-zero">±0</span>`;
+  const sign  = diff > 0 ? '+' : '';
+  const cls   = diff > 0 ? 'diff-positive' : 'diff-negative';
+  return `<span class="${cls}">${sign}৳${Math.abs(diff).toFixed(2)} (${sign}${pct}%)</span>`;
+}
+
+function skeletonRows(n = 4) {
+  return Array.from({length: n}).map(() => `
+    <tr class="sk-row">
+      <td><div class="skeleton" style="width:180px;height:14px"></div><div class="skeleton" style="width:120px;height:10px;margin-top:6px;opacity:0.5"></div></td>
+      <td><div class="skeleton" style="width:70px;height:14px"></div></td>
+      <td><div class="skeleton" style="width:55px;height:14px"></div></td>
+      <td><div class="skeleton" style="width:60px;height:18px"></div></td>
+      <td><div class="skeleton" style="width:40px;height:12px"></div></td>
+      <td></td>
+    </tr>`).join('');
+}
+
+function renderTable(products) {
+  const container = document.getElementById('products-container');
+
+  if (!products.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">◎</div>
+        <div class="empty-title">No products tracked yet</div>
+        <div class="empty-sub">Paste a Lazada product URL above and hit Track</div>
+      </div>`;
+    return;
+  }
+
+  const rows = products.map(p => `
+    <tr>
+      <td>
+        <div class="product-name" title="${p.name}">${p.name}</div>
+        <a class="product-url" href="${p.url}" target="_blank" rel="noopener" title="${p.url}">${p.url}</a>
+      </td>
+      <td>
+        <span class="price-mono price-new">৳${p.new_price.toFixed(2)}</span>
+        <span class="price-old">was ৳${p.last_price.toFixed(2)}</span>
+      </td>
+      <td>${diffHtml(p.difference, p.percent_change)}</td>
+      <td>${badgeHtml(p.status)}</td>
+      <td class="hide-mobile">
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.7rem" onclick="refreshOne('${encodeURIComponent(p.url)}')">↻</button>
+      </td>
+      <td>
+        <button class="btn btn-danger" onclick="deleteProduct('${encodeURIComponent(p.url)}')">✕</button>
+      </td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Change</th>
+            <th>Status</th>
+            <th class="hide-mobile">Refresh</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+/* ── Load all products ───────────────────────────────────────────── */
+async function loadProducts() {
+  const btn  = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  btn.disabled = true;
+  icon.style.animation = 'spin 0.7s linear infinite';
+
+  // Show skeletons immediately
+  document.getElementById('products-container').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Product</th><th>Price</th><th>Change</th><th>Status</th><th class="hide-mobile">Refresh</th><th></th>
+        </tr></thead>
+        <tbody>${skeletonRows()}</tbody>
+      </table>
+    </div>`;
+
+  try {
+    const res = await fetch(`${API}/products`);
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const data = await res.json();
+    renderTable(data.products);
+    updateStats(data.products);
+    document.getElementById('last-update').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+  } catch (e) {
+    toast('Failed to load products — is the API running?', 'error');
+    document.getElementById('products-container').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠</div>
+        <div class="empty-title">Cannot reach API</div>
+        <div class="empty-sub">Make sure the FastAPI server is running on localhost:8000</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+/* ── Track new product ───────────────────────────────────────────── */
+async function trackProduct() {
+  const input = document.getElementById('url-input');
+  const url   = input.value.trim();
+  if (!url) { toast('Please enter a product URL', 'error'); return; }
+
+  const btn   = document.getElementById('track-btn');
+  const inner = document.getElementById('track-btn-inner');
+  btn.disabled = true;
+  inner.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const res  = await fetch(`${API}/track/${encodeURIComponent(url)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    toast(`Tracked: ${data.name}`, 'success');
+    input.value = '';
+    loadProducts();
+  } catch (e) {
+    toast(`Error: ${e.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    inner.textContent = '+ Track';
+  }
+}
+
+/* ── Refresh single product ─────────────────────────────────────── */
+async function refreshOne(encodedUrl) {
+  const url = decodeURIComponent(encodedUrl);
+  try {
+    const res  = await fetch(`${API}/track/${encodeURIComponent(url)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    toast(`Refreshed: ${data.name}`, 'success');
+    loadProducts();
+  } catch (e) {
+    toast(`Refresh failed: ${e.message}`, 'error');
+  }
+}
+
+/* ── Delete product ──────────────────────────────────────────────── */
+async function deleteProduct(encodedUrl) {
+  const url = decodeURIComponent(encodedUrl);
+  try {
+    const res  = await fetch(`${API}/products/by-url`, {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    toast('Product removed', 'success');
+    loadProducts();
+  } catch (e) {
+    toast(`Delete failed: ${e.message}`, 'error');
+  }
+}
+
+/* ── Enter key on input ──────────────────────────────────────────── */
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') trackProduct();
+});
+
+/* ── Init ────────────────────────────────────────────────────────── */
+loadProducts();
+</script>
+</body>
+</html>
